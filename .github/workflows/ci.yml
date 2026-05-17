@@ -56,3 +56,45 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME != '' && format('{0}/skillpulse-frontend:{1}', secrets.DOCKERHUB_USERNAME, github.sha) || format('skillpulse-frontend:{0}', github.sha) }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  generate-summary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗️ Output Architecture Diagram
+        run: |
+          cat << 'EOF' >> $GITHUB_STEP_SUMMARY
+          ## 🏗️ SkillPulse Pipeline Architecture
+          
+          ```mermaid
+          graph TD
+              classDef action fill:#2ea44f,stroke:#333,stroke-width:2px,color:#fff;
+              classDef docker fill:#0db7ed,stroke:#333,stroke-width:2px,color:#fff;
+              
+              Dev["👨‍💻 Developer"] -->|git push| GitHub["🐙 GitHub Repository"]
+              
+              subgraph CI [GitHub Actions - CI]
+                  Build["⚙️ Build Images in Parallel"]:::action
+              end
+              
+              GitHub -->|Triggers| CI
+              Build -->|Pushes| DockerHub["🐳 Docker Hub"]:::docker
+              
+              subgraph CD [GitHub Actions - CD]
+                  Deploy["🚀 Deploy via SSH"]:::action
+              end
+              
+              CI -->|Triggers| CD
+              Deploy -.->|Pulls Images| DockerHub
+              Deploy -->|Executes| EC2["☁️ AWS EC2 Instance"]
+              
+              subgraph Server [AWS EC2]
+                  Nginx["🌐 NGINX Frontend"]:::docker
+                  Go["⚙️ Go Backend API"]:::docker
+                  DB["🗄️ MySQL Database"]:::docker
+              end
+              
+              EC2 --> Nginx
+              EC2 --> Go
+              EC2 --> DB
+          ```
+          EOF
